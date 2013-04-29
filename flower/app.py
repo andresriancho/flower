@@ -12,11 +12,12 @@ from flower.urls import handlers
 
 class Flower(tornado.web.Application):
     def __init__(self, celery_app=None, events=None, state=None,
-                 io_loop=None, options=None, **kwargs):
+                 io_loop=None, options=None, ssl_options=None, **kwargs):
         kwargs.update(handlers=handlers)
         super(Flower, self).__init__(**kwargs)
         self.io_loop = io_loop or ioloop.IOLoop.instance()
         self.options = options or object()
+        self.ssl_options = ssl_options
         self.auth = getattr(self.options, 'auth', [])
         self.basic_auth = getattr(self.options, 'basic_auth', None)
         self.broker_api = getattr(self.options, 'broker_api', None)
@@ -32,6 +33,10 @@ class Flower(tornado.web.Application):
         self.events.start()
         if self.options.inspect:
             self.state.start()
+        ssl_options = {
+                       "certfile": "flower.crt",
+                       "keyfile": "flower.key",
+                       }
         self.listen(self.options.port, address=self.options.address)
         self.io_loop.start()
 
