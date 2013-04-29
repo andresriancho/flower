@@ -12,6 +12,7 @@ import celery
 
 from . import settings
 from .utils.broker import Broker
+from .autoscaling.generic import GenericAutoscaler
 
 
 class State(threading.Thread):
@@ -26,7 +27,8 @@ class State(threading.Thread):
         self._inspect = threading.Event()
         self._inspect.set()
         self._last_access = time.time()
-
+        self._autoscaler = GenericAutoscaler(self)
+        
         self._stats = {}
         self._registered_tasks = {}
         self._scheduled_tasks = {}
@@ -112,6 +114,8 @@ class State(threading.Thread):
                     self._conf = conf or {}
                     self._broker_queues = broker_queues or []
 
+                self._autoscaler.autoscale()
+                
                 try_interval = 1
 
                 if time.time() - self._last_access > 60 * timeout:
@@ -141,7 +145,8 @@ class State(threading.Thread):
     def __getattr__(self, name):
         if name in ['stats', 'registered_tasks', 'scheduled_tasks',
                     'active_tasks', 'reserved_tasks', 'revoked_tasks',
-                    'ping', 'active_queues', 'conf', 'broker_queues']:
+                    'ping', 'active_queues', 'conf', 'broker_queues',
+                    'celery_app']:
             with self._update_lock:
                 self._last_access = time.time()
                 return copy.deepcopy(getattr(self, '_' + name))

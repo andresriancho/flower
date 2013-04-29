@@ -1,0 +1,3 @@
+MIN_WORKERS = 1
+MAX_WORKERS = 4
+ 
