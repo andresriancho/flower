@@ -12,7 +12,7 @@ import celery
 
 from . import settings
 from .utils.broker import Broker
-from .autoscaling.generic import GenericAutoscaler
+from .autoscaling.autoscaler import Autoscaler
 
 
 class State(threading.Thread):
@@ -27,7 +27,7 @@ class State(threading.Thread):
         self._inspect = threading.Event()
         self._inspect.set()
         self._last_access = time.time()
-        self._autoscaler = GenericAutoscaler(self)
+        self._autoscaler = Autoscaler(self)
         
         self._stats = {}
         self._registered_tasks = {}
@@ -39,6 +39,7 @@ class State(threading.Thread):
         self._active_queues = {}
         self._confs = {}
         self._broker_queues = []
+        self._all_broker_queues = []
 
     def run(self):
         try:
@@ -94,7 +95,8 @@ class State(threading.Thread):
 
                 try:
                     if self._broker_api:
-                        broker_queues = broker.queues(self.active_queue_names)
+                        aqn = self.active_queue_names
+                        broker_queues, all_broker_queues = broker.queues(aqn)
                     else:
                         broker_queues = None
                     logging.debug('Broker queues: %s' % pformat(broker_queues))
@@ -113,7 +115,8 @@ class State(threading.Thread):
                     self._active_queues = active_queues or {}
                     self._conf = conf or {}
                     self._broker_queues = broker_queues or []
-
+                    self._all_broker_queues = all_broker_queues or []
+                
                 self._autoscaler.autoscale()
                 
                 try_interval = 1
@@ -146,7 +149,7 @@ class State(threading.Thread):
         if name in ['stats', 'registered_tasks', 'scheduled_tasks',
                     'active_tasks', 'reserved_tasks', 'revoked_tasks',
                     'ping', 'active_queues', 'conf', 'broker_queues',
-                    'celery_app']:
+                    'all_broker_queues']:
             with self._update_lock:
                 self._last_access = time.time()
                 return copy.deepcopy(getattr(self, '_' + name))

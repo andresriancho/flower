@@ -28,6 +28,10 @@ class RabbitMQ(BrokerBase):
         self._broker_api_url = broker_api_url
 
     def queues(self, names):
+        info = self.all_queues()        
+        return filter(lambda x: x['name'] in names, info), info
+
+    def all_queues(self):
         
         broker_url = urljoin(self._broker_api_url, 'queues', self.vhost)
         basic_auth = requests.auth.HTTPBasicAuth(self.username, self.password)
@@ -35,10 +39,9 @@ class RabbitMQ(BrokerBase):
 
         if r.status_code == 200:
             info = r.json()
-            return filter(lambda x: x['name'] in names, info)
+            return info
         else:
             r.raise_for_status()
-
 
 class Redis(BrokerBase):
     def __init__(self, broker_url, *args, **kwargs):
